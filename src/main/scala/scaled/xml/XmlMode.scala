@@ -42,6 +42,6 @@ class XmlMode (env :Env) extends GrammarCodeMode(env) {
   override def dispose () {} // nada for now
 
   override def configDefs = XmlConfig :: super.configDefs
-  override protected def grammars = XmlConfig.grammars
-  override protected def effacers = XmlConfig.effacers
+  override def grammars = XmlConfig.grammars
+  override def effacers = XmlConfig.effacers
 }
