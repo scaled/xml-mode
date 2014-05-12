@@ -6,8 +6,7 @@ package scaled.xml
 
 import scaled._
 import scaled.grammar._
-import scaled.major.CodeConfig
-import scaled.util.Commenter
+import scaled.code.{CodeConfig, Commenter}
 
 object XmlConfig extends Config.Defs {
   import EditorConfig._
