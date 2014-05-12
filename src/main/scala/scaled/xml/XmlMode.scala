@@ -7,6 +7,7 @@ package scaled.xml
 import scaled._
 import scaled.grammar._
 import scaled.major.CodeConfig
+import scaled.util.Commenter
 
 object XmlConfig extends Config.Defs {
   import EditorConfig._
@@ -44,4 +45,7 @@ class XmlMode (env :Env) extends GrammarCodeMode(env) {
   override def configDefs = XmlConfig :: super.configDefs
   override def grammars = XmlConfig.grammars
   override def effacers = XmlConfig.effacers
+
+  override val indenters = Nil
+  override val commenter = new Commenter(buffer)
 }
