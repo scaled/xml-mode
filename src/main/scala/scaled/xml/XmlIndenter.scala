@@ -12,7 +12,7 @@ object XmlIndenter {
   import Indenter._
   import Chars._
 
-  class CloseTag (config :Config, buffer :BufferV) extends Indenter(config, buffer) {
+  class CloseTag (ctx :Context) extends Indenter(ctx) {
     def apply (block :Block, line :LineV, pos :Loc) :Option[Int] = {
       val tags = XmlParser.parse(line)
       if (tags.isEmpty || !tags.head.isClose) None
@@ -38,7 +38,7 @@ object XmlIndenter {
   }
 
   /** Indents nested tags relative to their enclosing tag. */
-  class NestedTag (config :Config, buffer :BufferV) extends Indenter(config, buffer) {
+  class NestedTag (ctx :Context) extends Indenter(ctx) {
     def apply (block :Block, line :LineV, pos :Loc) :Option[Int] = {
       var open = Loc.None ; var close = Loc.None
       // scan backwards to find the first XML tag preceding pos
