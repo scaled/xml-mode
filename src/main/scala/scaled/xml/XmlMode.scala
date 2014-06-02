@@ -5,6 +5,7 @@
 package scaled.xml
 
 import scaled._
+import scaled.code.Indenter
 import scaled.grammar._
 import scaled.code.{CodeConfig, Commenter}
 
@@ -44,6 +45,12 @@ class XmlMode (env :Env) extends GrammarCodeMode(env) {
   override def configDefs = XmlConfig :: super.configDefs
   override def grammars = XmlConfig.grammars
   override def effacers = XmlConfig.effacers
+
+  val idetect = new Indenter.Detecter(4) {
+    // if the line starts with '<' then it is meaningful
+    def consider (line :LineV, start :Int) :Int = if (line.charAt(start) == '<') 1 else 0
+  }
+  override def detectIndent = idetect.detectIndent(buffer)
 
   override val indenters = List(
     new XmlIndenter.CloseTag(indentCtx),
