@@ -1,8 +1,8 @@
    name: xml-mode
+ source: git:https://github.com/scaled/xml-mode.git
 version: 1.0
 descrip: Provides support for editing XML files.
  weburl: https://github.com/scaled/xml-mode
- srcurl: git:https://github.com/scaled/xml-mode.git
 license: New BSD
  srcdir: src/main/scala
  bindir: target/classes
