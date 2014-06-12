@@ -4,6 +4,4 @@ version: 1.0
 descrip: Provides support for editing XML files.
  weburl: https://github.com/scaled/xml-mode
 license: New BSD
- srcdir: src/main/scala
- bindir: target/classes
  depend: git:https://github.com/scaled/textmate-grammar.git
