@@ -30,13 +30,14 @@ object XmlConfig extends Config.Defs {
     effacer("variable.language.entity", typeStyle)
   )
 
-  def xmlGrammar = Grammar.parse(stream("XML.tmLanguage"))
+  def xmlGrammar = Grammar.parseNDF(stream("XML.ndf"))
   lazy val grammars = Seq(xmlGrammar)
 }
 
 @Major(name="xml",
        tags=Array("code", "project", "xml"),
-       pats=Array(".*\\.xml", ".*\\.tmLanguage"),
+       pats=Array(".*\\.xml", ".*\\.dtml", ".*\\.opml", ".*\\.xsd", ".*\\.tld", ".*\\.jsp",
+                  ".*\\.rss", ".*\\.tmLanguage"),
        desc="A major mode for editing XML files.")
 class XmlMode (env :Env) extends GrammarCodeMode(env) {
 
