@@ -19,18 +19,22 @@ object XmlIndenter {
       // we're looking at a close tag, indent it to its matching open tag
       else {
         val name = tags.head.name ; val nameM = Matcher.exact(name)
+        var count = 1
         // check every line preceding this one that contains our tag name for the matching open tag
         def seek (last :Loc) :Int = buffer.findBackward(nameM, last.atCol(0)) match {
           case Loc.None =>
             debug(s"Failed to find <$name> to match indent.")
             readIndent(buffer, pos)
           case open =>
-            XmlParser.parse(buffer.line(open)).find(t => t.name == name && t.isOpen) match {
-              case None => seek(open) // keep looking
-              case Some(t) =>
+            // scan backwards, skipping close/open pairs, to find the open tag we seek
+            for (tag <- XmlParser.parse(buffer.line(open)).filter(_.name == name).reverse) {
+              count += (if (tag.isOpen) -1 else 1)
+              if (count == 0) {
                 debug(s"Matching indent of <$name> @ $open")
-                readIndent(buffer, open)
+                return readIndent(buffer, open)
+              }
             }
+            seek(open) // didn't find match on this line, keep going
         }
         Some(seek(pos))
       }
