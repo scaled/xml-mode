@@ -30,8 +30,8 @@ object XmlConfig extends Config.Defs {
     effacer("variable.language.entity", typeStyle)
   )
 
-  def xmlGrammar = Grammar.parseNDF(stream("XML.ndf"))
-  lazy val grammars = Seq(xmlGrammar)
+  val xmlGrammar = reloadable("XML.ndf", Grammar.parseNDF)
+  def grammars = Seq(xmlGrammar())
 }
 
 @Major(name="xml",
