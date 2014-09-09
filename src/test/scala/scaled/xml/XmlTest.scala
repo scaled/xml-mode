@@ -24,7 +24,7 @@ class XmlTest {
     /* 6*/ "</foo>",
     /* 7*/ "}").mkString("\n")
 
-  val xml = Grammar.parse(getClass.getClassLoader.getResourceAsStream("XML.tmLanguage"))
+  val xml = Grammar.parseNDF(getClass.getClassLoader.getResourceAsStream("XML.ndf"))
   val grammars = List(xml)
 
   @Test def debugGrammar () {
