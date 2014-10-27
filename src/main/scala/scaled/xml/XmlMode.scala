@@ -30,8 +30,7 @@ object XmlConfig extends Config.Defs {
     effacer("variable.language.entity", typeStyle)
   )
 
-  val xmlGrammar = reloadable("XML.ndf", Grammar.parseNDF)
-  def grammars = Seq(xmlGrammar())
+  val grammars = reloadable(Seq("XML.ndf"))(Grammar.parseNDFs)
 }
 
 @Major(name="xml",
@@ -44,7 +43,7 @@ class XmlMode (env :Env) extends GrammarCodeMode(env) {
   override def dispose () {} // nada for now
 
   override def configDefs = XmlConfig :: super.configDefs
-  override def grammars = XmlConfig.grammars
+  override def grammars = XmlConfig.grammars.get
   override def effacers = XmlConfig.effacers
 
   override def detectIndent = new Indenter.Detecter(4) {
