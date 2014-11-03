@@ -13,9 +13,9 @@ object XmlIndenter {
   import Chars._
 
   class CloseTag (ctx :Context) extends Indenter(ctx) {
-    def apply (block :Block, line :LineV, pos :Loc) :Option[Int] = {
+    def apply (block :Block, line :LineV, pos :Loc) :Int = {
       val tags = XmlParser.parse(line)
-      if (tags.isEmpty || !tags.head.isClose) None
+      if (tags.isEmpty || !tags.head.isClose) NA
       // we're looking at a close tag, indent it to its matching open tag
       else {
         val name = tags.head.name ; val nameM = Matcher.exact(name)
@@ -36,17 +36,16 @@ object XmlIndenter {
             }
             seek(open) // didn't find match on this line, keep going
         }
-        Some(seek(pos))
+        seek(pos)
       }
     }
   }
 
   /** Indents nested tags relative to their enclosing tag. */
   class NestedTag (ctx :Context) extends Indenter(ctx) {
-    def apply (block :Block, line :LineV, pos :Loc) :Option[Int] = {
-      var open = Loc.None ; var close = Loc.None
+    def apply (block :Block, line :LineV, pos :Loc) :Int = {
       // scan backwards to find the first XML tag preceding pos
-      def seek (row :Int) :Int =
+      @inline @tailrec def seek (row :Int) :Int =
         if (row < 0) { debug(s"Hit start of buffer seeking open/close tag.") ; 0 }
         else {
           val line = buffer.line(row)
@@ -65,7 +64,7 @@ object XmlIndenter {
           }
           seek(row-1)
         }
-      Some(seek(pos.row-1))
+      seek(pos.row-1)
     }
   }
 }
