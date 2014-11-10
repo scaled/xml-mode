@@ -46,14 +46,6 @@ class XmlMode (env :Env) extends GrammarCodeMode(env) {
   override def grammars = XmlConfig.grammars.get
   override def effacers = XmlConfig.effacers
 
-  override def detectIndent = new Indenter.Detecter(4) {
-    // if the line starts with '<' then it is meaningful
-    def consider (line :LineV, start :Int) :Int = if (line.charAt(start) == '<') 1 else 0
-  }.detectIndent(buffer)
-
-  override val indenters = List(
-    new XmlIndenter.CloseTag(indentCtx),
-    new XmlIndenter.NestedTag(indentCtx)
-  )
+  override def createIndenter() = new XmlIndenter(buffer, config)
   override val commenter = new Commenter()
 }

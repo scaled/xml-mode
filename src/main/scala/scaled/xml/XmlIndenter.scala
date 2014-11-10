@@ -5,66 +5,134 @@
 package scaled.xml
 
 import scaled._
-import scaled.code.{CodeConfig, Block, Indenter}
-import scaled.util.Chars
+import scaled.code.Indenter
 
-object XmlIndenter {
+class XmlIndenter (buf :Buffer, cfg :Config) extends Indenter.ByState(buf, cfg) {
   import Indenter._
-  import Chars._
 
-  class CloseTag (ctx :Context) extends Indenter(ctx) {
-    def apply (block :Block, line :LineV, pos :Loc) :Int = {
-      val tags = XmlParser.parse(line)
-      if (tags.isEmpty || !tags.head.isClose) NA
-      // we're looking at a close tag, indent it to its matching open tag
-      else {
-        val name = tags.head.name ; val nameM = Matcher.exact(name)
-        var count = 1
-        // check every line preceding this one that contains our tag name for the matching open tag
-        def seek (last :Loc) :Int = buffer.findBackward(nameM, last.atCol(0)) match {
-          case Loc.None =>
-            debug(s"Failed to find <$name> to match indent.")
-            readIndent(buffer, pos)
-          case open =>
-            // scan backwards, skipping close/open pairs, to find the open tag we seek
-            for (tag <- XmlParser.parse(buffer.line(open)).filter(_.name == name).reverse) {
-              count += (if (tag.isOpen) -1 else 1)
-              if (count == 0) {
-                debug(s"Matching indent of <$name> @ $open")
-                return readIndent(buffer, open)
-              }
-            }
-            seek(open) // didn't find match on this line, keep going
-        }
-        seek(pos)
-      }
+  private val tagCloseM = Matcher.exact("</")
+
+  override protected def computeIndent (state :State, base :Int, line :LineV, first :Int) :Int = {
+    // if this line starts with a close tag, back it up one level to match its corresponding open
+    // tag (TODO: really we should indent it based on the next line's state)
+    if (line.matches(tagCloseM, first)) base - indentWidth
+    else super.computeIndent(state, base, line, first)
+  }
+
+  protected def createStater () = new Stater() {
+    def compute (line :LineV, start :State) = {
+      parse(line, start)
     }
   }
 
-  /** Indents nested tags relative to their enclosing tag. */
-  class NestedTag (ctx :Context) extends Indenter(ctx) {
-    def apply (block :Block, line :LineV, pos :Loc) :Int = {
-      // scan backwards to find the first XML tag preceding pos
-      @inline @tailrec def seek (row :Int) :Int =
-        if (row < 0) { debug(s"Hit start of buffer seeking open/close tag.") ; 0 }
-        else {
-          val line = buffer.line(row)
-          var tags = XmlParser.parse(line)
-          var tt = tags.length - 1 ; while (tt >= 0) {
-            val tag = tags(tt)
-            if (tag.isOpen) {
-              debug(s"Indenting from <open> @ $row")
-              return indentFrom(readIndent(line), 1)
-            }
-            else if (tag.isClose) {
-              debug(s"Matching indent of </close> @ $row")
-              return readIndent(line)
-            }
-            tt -= 1
-          }
-          seek(row-1)
-        }
-      seek(pos.row-1)
+  protected class XmlS (tag :String, dt :Int, next :State) extends State(next) {
+    def isMatchingOpen (tag :String) = (dt > 0) && (this.tag == tag)
+    override def indent (cfg :Config, top :Boolean) = dt * indentWidth(cfg) + next.indent(cfg)
+    override def show = s"XmlS($tag, $dt)"
+  }
+
+  // what follows is a primitive XML parser which allows us to count up open and close tags and
+  // base our indentation on the number of unclosed open tags at any point in the buffer
+
+  protected def parse (line :LineV, start :State) :State = {
+    cs = line
+    len = line.length
+    top = start
+    pos = 0
+    isClose = false
+    isProc = false
+
+    var state = 0
+    while (pos < len) {
+      val c = cs.charAt(pos)
+      pos += 1
+      // println(s"step($c, $state)")
+      state = step(c, len, state)
     }
+    top
+  }
+
+  // line parser state; reset on each call to parse()
+  private[this] val name = new StringBuilder()
+  private[this] var cs :CharSequence = _
+  private[this] var len = 0
+  private[this] var top :State = _
+
+  // state:
+  // 0 - between tags
+  // 1 - seen < or </ (isClose tracks) or <? (isProc tracks)
+  // 2 - parsed name, ignoring rest of tag
+  // 3 - in string
+  // 4 - in comment
+  private[this] var pos = 0
+  private[this] var isClose = false
+  private[this] var isProc = false
+
+  // this assumes pos is incremented *before* calling step()
+  private def peek :Char = if (pos >= len) 0 else cs.charAt(pos)
+  private def eat (c :Char) = if (peek != c) false else { pos += 1 ; true }
+  private def eat (seq :String) :Boolean = {
+    var p = pos ; var s = 0 ; while (s < seq.length) {
+      if (p >= len || cs.charAt(p) != seq.charAt(s)) return false
+      p += 1 ; s += 1
+    }
+    pos += seq.length
+    true
+  }
+
+  private def step (c :Char, len :Int, stepState :Int) :Int = stepState match {
+    case 0 =>
+      if (c != '<') 0 // keep looking for open tag
+      else if (eat("!--")) 4 // transition to "in comment"
+      else {
+        isClose = eat('/')
+        isProc = eat('?')
+        1 // transition to "parsing tag name"
+      }
+
+    case 1 =>
+      if (isNameChar(c)) { name.append(c) ; 1 }
+      // otherwise reprocess 'c' in state 2
+      else step(c, len, 2)
+
+    case 2 =>
+      val autoClose = (c == '/' && eat('>'))
+      if (c == '>' || autoClose) {
+        // TODO: should we complain about </foo/>? probably not, correctness is not our problem
+        if (!isProc && !autoClose) {
+          val tag = name.toString
+          def isMatchingOpen = top match {
+            case xs :XmlS if (xs.isMatchingOpen(tag)) => true
+            case _ => false
+          }
+          // if this is a close tag which matches the open tag on the top of the stack, pop the
+          // open tag
+          top = if (isClose && isMatchingOpen) top.next
+                else new XmlS(tag, if (isClose) -1 else 1, top)
+        }
+        name.clear()
+        0 // back to in between tags
+      }
+      else if (c == '"') 3
+      else 2
+
+    case 3 =>
+      if (c == '"') 2 else 3
+
+    case 4 =>
+      if (c == '-' && eat("->")) 0 // back to between tags
+      else 4
+  }
+
+  private def isNameChar (c :Char) = {
+    def in (l :Char, u :Char) = l <= c && c <= u
+    c != ' ' && (
+      in('a', 'z') || in('A', 'Z') || in('0', '9') || c == ':' || c == '_' || c == '-' ||
+      c == '.' || c == '\u00B7' || in('\u00C0', '\u00D6') || in('\u00D8', '\u00F6') ||
+      in('\u00F8', '\u02FF') || in('\u0370', '\u037D') || in('\u037F', '\u1FFF') ||
+      in('\u200C', '\u200D') || in('\u2070', '\u218F') || in('\u2C00', '\u2FEF') ||
+      in('\u3001', '\uD7FF') || in('\uF900', '\uFDCF') || in('\uFDF0', '\uFFFD') ||
+      in('\u0300', '\u036F') || in('\u203F', '\u2040') /*|| in('\u10000', '\uEFFFF')*/
+    )
   }
 }
