@@ -11,11 +11,14 @@ class XmlIndenter (buf :Buffer, cfg :Config) extends Indenter.ByState(buf, cfg) 
   import Indenter._
 
   private val tagCloseM = Matcher.exact("</")
+  private val dashDashM = Matcher.exact("--")
 
   override protected def computeIndent (state :State, base :Int, line :LineV, first :Int) :Int = {
     // if this line starts with a close tag, back it up one level to match its corresponding open
     // tag (TODO: really we should indent it based on the next line's state)
     if (line.matches(tagCloseM, first)) base - indentWidth
+    // if we're in the middle of a comment, align comment based on whether it starts with --
+    else if (state.isInstanceOf[CommentS] && !line.matches(dashDashM, first)) base + 3
     else super.computeIndent(state, base, line, first)
   }
 
@@ -31,25 +34,62 @@ class XmlIndenter (buf :Buffer, cfg :Config) extends Indenter.ByState(buf, cfg) 
     override def show = s"XmlS($tag, $dt)"
   }
 
+  protected class PartialTagS (val tag :String, val isClose :Boolean, val isProc :Boolean,
+                               next :State) extends State(next) {
+    override def indent (cfg :Config, top :Boolean) = tag.length + 2 + next.indent(cfg)
+    override def show = s"PartialTagS($tag, $isClose, $isProc)"
+  }
+
+  protected class CommentS (next :State) extends State(next) {
+    // we indent two here and computeIndent will look at the line and indent it further if it does
+    // not start with '--'
+    override def indent (cfg :Config, top :Boolean) = 2 + next.indent(cfg)
+    override def show = s"CommentS"
+  }
+
   // what follows is a primitive XML parser which allows us to count up open and close tags and
   // base our indentation on the number of unclosed open tags at any point in the buffer
 
   protected def parse (line :LineV, start :State) :State = {
     cs = line
     len = line.length
-    top = start
     pos = 0
+    name.setLength(0)
     isClose = false
     isProc = false
-
     var state = 0
+
+    // if we're in the middle of a tag or comment, initialize our parser state accordingly
+    start match {
+      case pt :PartialTagS =>
+        state = 2
+        top = start.next
+        name.append(pt.tag)
+        isClose = pt.isClose
+        isProc = pt.isProc
+
+      case ct :CommentS =>
+        state = 4
+        top = start.next
+
+      case _ =>
+        top = start
+    }
+
     while (pos < len) {
       val c = cs.charAt(pos)
       pos += 1
       // println(s"step($c, $state)")
       state = step(c, len, state)
     }
-    top
+
+    // if we're in the middle of a tag or comment, reflect that in the inter-line state
+    state match {
+      case 2 => new PartialTagS(name.toString, isClose, isProc, top)
+      case 4 => new CommentS(top)
+      // TODO: we *could* be in state 1, but that would be a crack-smoking place to wrap a tag...
+      case _ => top
+    }
   }
 
   // line parser state; reset on each call to parse()
@@ -60,7 +100,7 @@ class XmlIndenter (buf :Buffer, cfg :Config) extends Indenter.ByState(buf, cfg) 
 
   // state:
   // 0 - between tags
-  // 1 - seen < or </ (isClose tracks) or <? (isProc tracks)
+  // 1 - seen < or </ (isClose tracks) or <?/<! (isProc tracks)
   // 2 - parsed name, ignoring rest of tag
   // 3 - in string
   // 4 - in comment
@@ -86,7 +126,7 @@ class XmlIndenter (buf :Buffer, cfg :Config) extends Indenter.ByState(buf, cfg) 
       else if (eat("!--")) 4 // transition to "in comment"
       else {
         isClose = eat('/')
-        isProc = eat('?')
+        isProc = eat('?') || eat('!')
         1 // transition to "parsing tag name"
       }
 
