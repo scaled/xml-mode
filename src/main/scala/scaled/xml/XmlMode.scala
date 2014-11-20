@@ -30,7 +30,7 @@ object XmlConfig extends Config.Defs {
     effacer("variable.language.entity", typeStyle)
   )
 
-  val grammars = reloadable(Seq("XML.ndf"))(Grammar.parseNDFs)
+  val grammars = resource("XML.ndf")(Grammar.parseNDFs)
 }
 
 @Major(name="xml",
