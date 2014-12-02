@@ -6,3 +6,4 @@ descrip: Provides support for editing XML files.
 license: New BSD
  scopts: -deprecation -feature
  depend: git:https://github.com/scaled/textmate-grammar.git
+ module: test
