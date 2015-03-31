@@ -28,9 +28,10 @@ class XmlIndenter (buf :Buffer, cfg :Config) extends Indenter.ByState(buf, cfg) 
     }
   }
 
-  protected class XmlS (tag :String, dt :Int, next :State) extends State(next) {
-    def isMatchingOpen (tag :String) = (dt > 0) && (this.tag == tag)
-    override def indent (cfg :Config, top :Boolean) = dt * indentWidth(cfg) + next.indent(cfg)
+  protected class XmlS (tag :String, open :Boolean, dt :Int, next :State) extends State(next) {
+    def isMatchingOpen (tag :String) = open && (this.tag == tag)
+    override def indent (cfg :Config, top :Boolean) =
+      (if (open) dt else -dt) * indentWidth(cfg) + next.indent(cfg)
     override def show = s"XmlS($tag, $dt)"
   }
 
@@ -76,6 +77,10 @@ class XmlIndenter (buf :Buffer, cfg :Config) extends Indenter.ByState(buf, cfg) 
         top = start
     }
 
+    // note the top state at the 'start' of the line; we'll use this later to determine whether an
+    // open tag is the first open tag on the line or not
+    startTop = top
+
     while (pos < len) {
       val c = cs.charAt(pos)
       pos += 1
@@ -97,6 +102,7 @@ class XmlIndenter (buf :Buffer, cfg :Config) extends Indenter.ByState(buf, cfg) 
   private[this] var cs :CharSequence = _
   private[this] var len = 0
   private[this] var top :State = _
+  private[this] var startTop :State = _
 
   // state:
   // 0 - between tags
@@ -147,8 +153,15 @@ class XmlIndenter (buf :Buffer, cfg :Config) extends Indenter.ByState(buf, cfg) 
           }
           // if this is a close tag which matches the open tag on the top of the stack, pop the
           // open tag
-          top = if (isClose && isMatchingOpen) top.next
-                else new XmlS(tag, if (isClose) -1 else 1, top)
+          top = if (isClose && isMatchingOpen) top.next else {
+            // if this is not the first tag on this line, then don't adjust indent; this ensures
+            // that constructs like:
+            // <foo><bar>
+            //   <stuff/>
+            // </bar></foo>
+            // doesn't end up doubling indenting <stuff/>
+            new XmlS(tag, !isClose, if (top == startTop) 1 else 0, top)
+          }
         }
         name.clear()
         0 // back to in between tags
