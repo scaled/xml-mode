@@ -36,7 +36,7 @@ object XmlConfig extends Config.Defs {
 @Major(name="xml",
        tags=Array("code", "project", "xml"),
        pats=Array(".*\\.xml", ".*\\.dtml", ".*\\.opml", ".*\\.xsd", ".*\\.tld", ".*\\.jsp",
-                  ".*\\.rss", ".*\\.tmLanguage"),
+                  ".*\\.rss", ".*\\.tmLanguage", ".*\\.pom"),
        desc="A major mode for editing XML files.")
 class XmlMode (env :Env) extends GrammarCodeMode(env) {
 
