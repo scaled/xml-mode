@@ -46,6 +46,6 @@ class XmlMode (env :Env) extends GrammarCodeMode(env) {
   override def grammars = XmlConfig.grammars.get
   override def effacers = XmlConfig.effacers
 
-  override def createIndenter() = new XmlIndenter(buffer, config)
+  override def createIndenter() = new XmlIndenter(config)
   override val commenter = new Commenter()
 }

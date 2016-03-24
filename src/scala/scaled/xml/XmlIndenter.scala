@@ -7,19 +7,19 @@ package scaled.xml
 import scaled._
 import scaled.code.Indenter
 
-class XmlIndenter (buf :Buffer, cfg :Config) extends Indenter.ByState(buf, cfg) {
+class XmlIndenter (cfg :Config) extends Indenter.ByState(cfg) {
   import Indenter._
 
   private val tagCloseM = Matcher.exact("</")
   private val dashDashM = Matcher.exact("--")
 
-  override protected def computeIndent (state :State, base :Int, line :LineV, first :Int) :Int = {
+  override protected def computeIndent (state :State, base :Int, info :Info) :Int = {
     // if this line starts with a close tag, back it up one level to match its corresponding open
     // tag (TODO: really we should indent it based on the next line's state)
-    if (line.matches(tagCloseM, first)) base - indentWidth
+    if (info.startsWith(tagCloseM)) base - indentWidth
     // if we're in the middle of a comment, align comment based on whether it starts with --
-    else if (state.isInstanceOf[CommentS] && !line.matches(dashDashM, first)) base + 3
-    else super.computeIndent(state, base, line, first)
+    else if (state.isInstanceOf[CommentS] && !info.startsWith(dashDashM)) base + 3
+    else super.computeIndent(state, base, info)
   }
 
   protected def createStater () = new Stater() {
