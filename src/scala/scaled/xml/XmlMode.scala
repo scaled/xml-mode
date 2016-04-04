@@ -30,6 +30,15 @@ object XmlConfig extends Config.Defs {
     effacer("variable.language.entity", typeStyle)
   )
 
+  // map TextMate grammar scopes to Scaled syntax definitions
+  val syntaxers = List(
+    syntaxer("comment.line", Syntax.LineComment),
+    syntaxer("comment.block", Syntax.DocComment),
+    syntaxer("constant", Syntax.OtherLiteral),
+    syntaxer("string.quoted.single", Syntax.StringLiteral),
+    syntaxer("string.quoted.double", Syntax.StringLiteral)
+  )
+
   val grammars = resource("XML.ndf")(Grammar.parseNDFs)
 }
 
@@ -45,7 +54,12 @@ class XmlMode (env :Env) extends GrammarCodeMode(env) {
   override def configDefs = XmlConfig :: super.configDefs
   override def grammars = XmlConfig.grammars.get
   override def effacers = XmlConfig.effacers
+  override def syntaxers = XmlConfig.syntaxers
 
   override def createIndenter() = new XmlIndenter(config)
-  override val commenter = new Commenter()
+
+  override val commenter = new Commenter() {
+    override def blockOpen   = "<!--"
+    override def blockClose  = "-->"
+  }
 }
