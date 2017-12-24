@@ -9,13 +9,14 @@ import scaled.code.Indenter
 import scaled.grammar._
 import scaled.code.{CodeConfig, Commenter}
 
-object XmlConfig extends Config.Defs {
+@Plugin(tag="textmate-grammar")
+class XmlGrammarPlugin extends GrammarPlugin {
   import EditorConfig._
   import CodeConfig._
-  import GrammarConfig._
 
-  // maps TextMate grammar scopes to Scaled style definitions
-  val effacers = List(
+  override def grammars = Map("source.xml" -> "XML.ndf")
+
+  override def effacers = List(
     effacer("comment.line", commentStyle),
     effacer("comment.block", docStyle),
     effacer("constant", constantStyle),
@@ -30,16 +31,13 @@ object XmlConfig extends Config.Defs {
     effacer("variable.language.entity", typeStyle)
   )
 
-  // map TextMate grammar scopes to Scaled syntax definitions
-  val syntaxers = List(
+  override def syntaxers = List(
     syntaxer("comment.line", Syntax.LineComment),
     syntaxer("comment.block", Syntax.DocComment),
     syntaxer("constant", Syntax.OtherLiteral),
     syntaxer("string.quoted.single", Syntax.StringLiteral),
     syntaxer("string.quoted.double", Syntax.StringLiteral)
   )
-
-  val grammars = resource("XML.ndf")(Grammar.parseNDFs)
 }
 
 @Major(name="xml",
@@ -51,10 +49,7 @@ class XmlMode (env :Env) extends GrammarCodeMode(env) {
 
   override def dispose () {} // nada for now
 
-  override def configDefs = XmlConfig :: super.configDefs
-  override def grammars = XmlConfig.grammars.get
-  override def effacers = XmlConfig.effacers
-  override def syntaxers = XmlConfig.syntaxers
+  override def langScope = "source.xml"
 
   override def createIndenter() = new XmlIndenter(config)
 
