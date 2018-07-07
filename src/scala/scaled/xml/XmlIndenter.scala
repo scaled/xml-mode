@@ -22,36 +22,9 @@ class XmlIndenter (cfg :Config) extends Indenter.ByState(cfg) {
     else super.computeIndent(state, base, info)
   }
 
-  protected def createStater () = new Stater() {
-    def compute (line :LineV, start :State) = {
-      parse(line, start)
-    }
-  }
-
-  protected class XmlS (tag :String, open :Boolean, dt :Int, next :State) extends State(next) {
-    def isMatchingOpen (tag :String) = open && (this.tag == tag)
-    override def indent (cfg :Config, top :Boolean) =
-      (if (open) dt else -dt) * indentWidth(cfg) + next.indent(cfg)
-    override def show = s"XmlS($tag, $dt)"
-  }
-
-  protected class PartialTagS (val tag :String, val isClose :Boolean, val isProc :Boolean,
-                               next :State) extends State(next) {
-    override def indent (cfg :Config, top :Boolean) = tag.length + 2 + next.indent(cfg)
-    override def show = s"PartialTagS($tag, $isClose, $isProc)"
-  }
-
-  protected class CommentS (next :State) extends State(next) {
-    // we indent two here and computeIndent will look at the line and indent it further if it does
-    // not start with '--'
-    override def indent (cfg :Config, top :Boolean) = 2 + next.indent(cfg)
-    override def show = s"CommentS"
-  }
-
-  // what follows is a primitive XML parser which allows us to count up open and close tags and
-  // base our indentation on the number of unclosed open tags at any point in the buffer
-
-  protected def parse (line :LineV, start :State) :State = {
+  override protected def computeState (line :LineV, start :State) = {
+    // a primitive XML parser which allows us to count up open and close tags and
+    // base our indentation on the number of unclosed open tags at any point in the buffer
     cs = line
     len = line.length
     pos = 0
@@ -95,6 +68,26 @@ class XmlIndenter (cfg :Config) extends Indenter.ByState(cfg) {
       // TODO: we *could* be in state 1, but that would be a crack-smoking place to wrap a tag...
       case _ => top
     }
+  }
+
+  protected class XmlS (tag :String, open :Boolean, dt :Int, next :State) extends State(next) {
+    def isMatchingOpen (tag :String) = open && (this.tag == tag)
+    override def indent (cfg :Config, top :Boolean) =
+      (if (open) dt else -dt) * indentWidth(cfg) + next.indent(cfg)
+    override def show = s"XmlS($tag, $dt)"
+  }
+
+  protected class PartialTagS (val tag :String, val isClose :Boolean, val isProc :Boolean,
+                               next :State) extends State(next) {
+    override def indent (cfg :Config, top :Boolean) = tag.length + 2 + next.indent(cfg)
+    override def show = s"PartialTagS($tag, $isClose, $isProc)"
+  }
+
+  protected class CommentS (next :State) extends State(next) {
+    // we indent two here and computeIndent will look at the line and indent it further if it does
+    // not start with '--'
+    override def indent (cfg :Config, top :Boolean) = 2 + next.indent(cfg)
+    override def show = s"CommentS"
   }
 
   // line parser state; reset on each call to parse()
