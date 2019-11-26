@@ -27,7 +27,7 @@ class XmlTest {
   val xml = Grammar.parseNDF(getClass.getClassLoader.getResource("XML.ndf"))
   val grammars = List(xml)
 
-  @Test def debugGrammar () {
+  @Test def debugGrammar () :Unit = {
     // xml.print(System.out)
     xml.scopeNames foreach println
 

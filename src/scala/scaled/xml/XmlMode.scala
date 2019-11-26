@@ -47,7 +47,7 @@ class XmlGrammarPlugin extends GrammarPlugin {
        desc="A major mode for editing XML files.")
 class XmlMode (env :Env) extends GrammarCodeMode(env) {
 
-  override def dispose () {} // nada for now
+  override def dispose () :Unit = {} // nada for now
 
   override def langScope = "source.xml"
 
