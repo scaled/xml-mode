@@ -43,7 +43,7 @@ class XmlGrammarPlugin extends GrammarPlugin {
 @Major(name="xml",
        tags=Array("code", "project", "xml"),
        pats=Array(".*\\.xml", ".*\\.dtml", ".*\\.opml", ".*\\.xsd", ".*\\.tld", ".*\\.jsp",
-                  ".*\\.rss", ".*\\.tmLanguage", ".*\\.pom"),
+                  ".*\\.rss", ".*\\.tmLanguage", ".*\\.pom", ".*\\.csproj"),
        desc="A major mode for editing XML files.")
 class XmlMode (env :Env) extends GrammarCodeMode(env) {
 
